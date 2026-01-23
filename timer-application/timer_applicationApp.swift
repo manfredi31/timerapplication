@@ -7,6 +7,32 @@ import SwiftUI
 import AppKit
 import UserNotifications
 
+// Custom NSView that accepts first mouse to fix drag gesture on first click
+class AcceptsFirstMouseView: NSView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
+}
+
+// Custom hosting controller that uses AcceptsFirstMouseView
+class AcceptsFirstMouseHostingController<Content: View>: NSHostingController<Content> {
+    override func loadView() {
+        super.loadView()
+        
+        // Wrap the hosting view in our custom view that accepts first mouse
+        let wrapper = AcceptsFirstMouseView()
+        wrapper.addSubview(view)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            view.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            view.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor)
+        ])
+        self.view = wrapper
+    }
+}
+
 @main
 struct timer_applicationApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -27,7 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon for menu bar only app
         NSApp.setActivationPolicy(.accessory)
-        
+
         // Setup menu bar
         setupMenuBar()
         
@@ -46,17 +72,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        
+
         if let button = statusItem.button {
             button.title = "⏱"
             button.action = #selector(togglePopover)
             button.target = self
         }
-        
+
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 280, height: 400)
+        popover.contentSize = NSSize(width: 350, height: 400)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: MenuBarView())
+        popover.animates = false
+        popover.contentViewController = AcceptsFirstMouseHostingController(rootView: MenuBarView())
     }
     
     private func setupTimerObserver() {

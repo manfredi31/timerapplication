@@ -8,11 +8,9 @@ struct MenuBarView: View {
     @ObservedObject var timerManager = TimerManager.shared
     @ObservedObject var settingsManager = SettingsManager.shared
     @State private var sliderValue: Double = 0
-    @State private var taskDescription: String = ""
     @State private var isDragging = false
-    @State private var isHoveringFloatButton = false
     
-    private let maxSliderMinutes: Double = 60
+    private let maxSliderMinutes: Double = 120
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -26,80 +24,66 @@ struct MenuBarView: View {
             bottomSection
         }
         .padding(16)
-        .frame(width: 300)
+        .frame(width: 350)
         .background(Color(NSColor.windowBackgroundColor))
     }
     
     // MARK: - Top Bar with Slider and Icons
     private var topBarSection: some View {
-        HStack(spacing: 12) {
-            // Time slider
-            GeometryReader { geometry in
-                let currentValue = isDragging ? sliderValue : effectiveSliderValue
-                let normalizedValue = min(1.0, currentValue / maxSliderMinutes)
-                
-                ZStack(alignment: .leading) {
-                    // Track background
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.3))
-                        .frame(height: 4)
-                        .cornerRadius(2)
-                    
-                    // Filled portion
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.6))
-                        .frame(width: max(0, geometry.size.width * normalizedValue), height: 4)
-                        .cornerRadius(2)
-                    
-                    // Slider handle
-                    Circle()
-                        .fill(Color.primary)
-                        .frame(width: 12, height: 12)
-                        .offset(x: max(0, min(geometry.size.width - 12, (geometry.size.width - 12) * normalizedValue)))
-                        .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { value in
-                                    isDragging = true
-                                    let newValue = (value.location.x / geometry.size.width) * maxSliderMinutes
-                                    sliderValue = max(0, min(maxSliderMinutes, newValue))
-                                }
-                                .onEnded { _ in
-                                    isDragging = false
-                                    // If timer is running, this allows scrubbing to change the timer
-                                }
-                        )
-                }
-            }
-            .frame(height: 12)
+        // Time slider with ruler-like appearance
+        GeometryReader { geometry in
+            let currentValue = isDragging ? sliderValue : effectiveSliderValue
+            let normalizedValue = min(1.0, currentValue / maxSliderMinutes)
             
-            // Action icons
-            HStack(spacing: 8) {
-                // Settings button
-                Button(action: {
-                    NotificationCenter.default.post(name: .showSettings, object: nil)
-                }) {
-                    Image(systemName: "gear")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Settings")
+            ZStack(alignment: .leading) {
+                // Background
+                Rectangle()
+                    .fill(Color(NSColor.controlBackgroundColor))
+                    .frame(height: 32)
+                    .cornerRadius(4)
                 
-                // Floating display toggle
-                Button(action: {
-                    NotificationCenter.default.post(name: .showFloatingWindow, object: nil)
-                }) {
-                    Image(systemName: "pip")
-                        .font(.system(size: 13))
-                        .foregroundColor(isHoveringFloatButton ? .primary : .secondary)
+                // Tick marks (ruler-like appearance)
+                HStack(spacing: 0) {
+                    ForEach(0..<Int(maxSliderMinutes), id: \.self) { minute in
+                        VStack(spacing: 0) {
+                            Spacer()
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.4))
+                                .frame(width: 1, height: 8)
+                        }
+                        .frame(width: geometry.size.width / CGFloat(maxSliderMinutes))
+                    }
                 }
-                .buttonStyle(.plain)
-                .onHover { hovering in
-                    isHoveringFloatButton = hovering
-                }
-                .help("Toggle floating display")
+                .frame(height: 32)
+                .allowsHitTesting(false)
+                
+                // Slider handle (vertical bar)
+                Rectangle()
+                    .fill(Color.white)
+                    .frame(width: 3, height: 32)
+                    .cornerRadius(1.5)
+                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .offset(x: max(0, min(geometry.size.width - 3, (geometry.size.width - 3) * normalizedValue)))
+                    .allowsHitTesting(false)
             }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        isDragging = true
+                        let rawValue = (value.location.x / geometry.size.width) * maxSliderMinutes
+                        // Snap to 1-minute increments
+                        let snappedValue = round(rawValue)
+                        sliderValue = max(0, min(maxSliderMinutes, snappedValue))
+                    }
+                    .onEnded { _ in
+                        isDragging = false
+                        // Ensure final value is also snapped
+                        sliderValue = round(sliderValue)
+                    }
+            )
         }
+        .frame(height: 32)
     }
     
     // MARK: - Preset Buttons
@@ -110,8 +94,9 @@ struct MenuBarView: View {
                     selectPreset(preset)
                 }) {
                     Text(preset.displayName)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11, weight: .light, design: .default))
+                        .monospacedDigit()
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
             }
@@ -131,8 +116,9 @@ struct MenuBarView: View {
                 }
             } label: {
                 Text("...")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11, weight: .light, design: .default))
+                    .monospacedDigit()
+                    .foregroundColor(.primary)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 20)
@@ -144,30 +130,13 @@ struct MenuBarView: View {
     // MARK: - Bottom Section
     private var bottomSection: some View {
         HStack(alignment: .bottom, spacing: 16) {
-            // Left side: Task input and start button
-            VStack(alignment: .leading, spacing: 8) {
-                // Task description input
-                TextField("", text: $taskDescription)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .foregroundColor(.primary)
-                    .frame(width: 100)
-                    .overlay(
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.3))
-                            .frame(height: 1)
-                            .offset(y: 10),
-                        alignment: .bottom
-                    )
-                
-                // Start button
-                Button(action: startTimer) {
-                    Text("start")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
+            // Left side: Start button
+            Button(action: startTimer) {
+                Text("start")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundColor(.secondary)
             }
+            .buttonStyle(.plain)
             
             Spacer()
             
@@ -183,6 +152,7 @@ struct MenuBarView: View {
                 .font(.system(size: 42, weight: .light, design: .default))
                 .foregroundColor(.primary)
                 .monospacedDigit()
+                .frame(minWidth: 150, alignment: .trailing)
             
             // Timer controls (only show when timer is active)
             if timerManager.state != .idle {
@@ -219,7 +189,14 @@ struct MenuBarView: View {
         // Show slider time
         let totalMinutes = Int(sliderValue)
         let totalSeconds = Int((sliderValue - Double(totalMinutes)) * 60)
-        return String(format: "%02d:%02d", totalMinutes, totalSeconds)
+        
+        if totalMinutes >= 60 {
+            let hours = totalMinutes / 60
+            let minutes = totalMinutes % 60
+            return String(format: "%d:%02d:%02d", hours, minutes, totalSeconds)
+        } else {
+            return String(format: "%02d:%02d", totalMinutes, totalSeconds)
+        }
     }
     
     private var effectiveSliderValue: Double {
@@ -236,7 +213,7 @@ struct MenuBarView: View {
         
         guard totalMinutes > 0 || totalSeconds > 0 else { return }
         
-        timerManager.startTimer(minutes: totalMinutes, seconds: totalSeconds, task: taskDescription)
+        timerManager.startTimer(minutes: totalMinutes, seconds: totalSeconds, task: "")
     }
     
     private func selectPreset(_ preset: TimerPreset) {

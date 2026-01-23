@@ -333,9 +333,10 @@ class SettingsWindowController: NSWindowController {
         )
         window.title = "Timer Settings"
         window.center()
-        
+        window.animationBehavior = .none
+
         super.init(window: window)
-        
+
         let hostingView = NSHostingView(rootView: SettingsView())
         window.contentView = hostingView
     }

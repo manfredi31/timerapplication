@@ -12,9 +12,12 @@ class FloatingTimerWindowController: NSWindowController {
     private init() {
         let window = FloatingPanel()
         super.init(window: window)
-        
+
         let hostingView = NSHostingView(rootView: FloatingTimerView())
         window.contentView = hostingView
+
+        // Disable window animations
+        window.animationBehavior = .none
     }
     
     required init?(coder: NSCoder) {
