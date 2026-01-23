@@ -25,6 +25,7 @@ struct MenuBarView: View {
         }
         .padding(16)
         .frame(width: 350)
+        .fixedSize(horizontal: false, vertical: true)
         .background(Color(NSColor.windowBackgroundColor))
     }
     
@@ -56,6 +57,7 @@ struct MenuBarView: View {
                 }
                 .frame(height: 32)
                 .allowsHitTesting(false)
+                .drawingGroup()
                 
                 // Slider handle (vertical bar)
                 Rectangle()
@@ -152,31 +154,30 @@ struct MenuBarView: View {
                 .font(.system(size: 42, weight: .light, design: .default))
                 .foregroundColor(.primary)
                 .monospacedDigit()
-                .frame(minWidth: 150, alignment: .trailing)
+                .frame(width: 170, alignment: .trailing)
             
-            // Timer controls (only show when timer is active)
-            if timerManager.state != .idle {
-                HStack(spacing: 12) {
-                    Button(action: {
-                        timerManager.togglePauseResume()
-                    }) {
-                        Image(systemName: timerManager.state == .running ? "pause" : "play")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button(action: {
-                        timerManager.stopTimer()
-                        sliderValue = 0
-                    }) {
-                        Image(systemName: "stop")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
+            // Timer controls (reserve space even when idle to prevent layout shifts)
+            HStack(spacing: 12) {
+                Button(action: {
+                    timerManager.togglePauseResume()
+                }) {
+                    Image(systemName: timerManager.state == .running ? "pause" : "play")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
                 }
+                .buttonStyle(.plain)
+                
+                Button(action: {
+                    timerManager.stopTimer()
+                    sliderValue = 0
+                }) {
+                    Image(systemName: "stop")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
             }
+            .opacity(timerManager.state != .idle ? 1 : 0)
         }
     }
     

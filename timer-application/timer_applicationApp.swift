@@ -113,7 +113,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func updateMenuBarDisplay() {
-        statusItem.button?.title = timerManager.menuBarDisplay
+        let text = timerManager.menuBarDisplay
+        
+        // Use monospaced digits to prevent width changes when timer ticks
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        ]
+        statusItem.button?.attributedTitle = NSAttributedString(string: text, attributes: attributes)
     }
     
     
