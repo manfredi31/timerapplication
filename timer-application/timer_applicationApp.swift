@@ -153,6 +153,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: .showSettings,
             object: nil
         )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(closePopover),
+            name: .closePopover,
+            object: nil
+        )
+    }
+    
+    @objc private func closePopover() {
+        popover.performClose(nil)
     }
     
     @objc private func togglePopover() {
