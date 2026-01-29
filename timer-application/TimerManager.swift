@@ -85,6 +85,9 @@ class TimerManager: ObservableObject {
         taskDescription = task
         state = .running
         
+        // Create calendar event if enabled
+        createCalendarEventIfEnabled()
+        
         startTimerLoop()
     }
     
@@ -96,7 +99,20 @@ class TimerManager: ObservableObject {
         taskDescription = task
         state = .running
         
+        // Create calendar event if enabled
+        createCalendarEventIfEnabled()
+        
         startTimerLoop()
+    }
+    
+    private func createCalendarEventIfEnabled() {
+        guard SettingsManager.shared.calendarIntegrationEnabled else { return }
+        
+        _ = CalendarManager.shared.createTimerEvent(
+            title: taskDescription,
+            durationSeconds: totalTime,
+            calendarIdentifier: SettingsManager.shared.selectedCalendarIdentifier
+        )
     }
     
     private func startTimerLoop() {
@@ -139,6 +155,12 @@ class TimerManager: ObservableObject {
         timer?.invalidate()
         timer = nil
         stopAlarm()
+        
+        // Delete calendar event if timer was manually stopped (not completed)
+        if state == .running || state == .paused {
+            CalendarManager.shared.deleteCurrentEvent()
+        }
+        
         state = .idle
         timeRemaining = 0
         totalTime = 0
@@ -208,6 +230,10 @@ class TimerManager: ObservableObject {
     
     private func clearAfterAlarm() {
         stopAlarm()
+        
+        // Timer completed naturally - keep the calendar event, just clear the reference
+        CalendarManager.shared.clearCurrentEventReference()
+        
         state = .idle
         timeRemaining = 0
         totalTime = 0

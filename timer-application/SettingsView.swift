@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import EventKit
 
 struct SettingsView: View {
     @ObservedObject var settingsManager = SettingsManager.shared
@@ -28,6 +29,12 @@ struct SettingsView: View {
                     Label("Hotkeys", systemImage: "command")
                 }
                 .tag(2)
+            
+            CalendarSettingsView()
+                .tabItem {
+                    Label("Calendar", systemImage: "calendar")
+                }
+                .tag(3)
         }
         .frame(width: 450, height: 350)
     }
@@ -317,6 +324,88 @@ struct HotkeyRow: View {
             if let hotkey = newValue {
                 onSet(hotkey)
             }
+        }
+    }
+}
+
+struct CalendarSettingsView: View {
+    @ObservedObject var settingsManager = SettingsManager.shared
+    @ObservedObject var calendarManager = CalendarManager.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Calendar Integration")
+                .font(.headline)
+            
+            Text("Automatically create calendar events when you start a timer.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Toggle("Enable calendar integration", isOn: $settingsManager.calendarIntegrationEnabled)
+                .onChange(of: settingsManager.calendarIntegrationEnabled) { _, newValue in
+                    if newValue {
+                        Task {
+                            await calendarManager.requestAccess()
+                        }
+                    }
+                }
+            
+            if settingsManager.calendarIntegrationEnabled {
+                Divider()
+                
+                if calendarManager.authorizationStatus == .fullAccess || calendarManager.authorizationStatus == .authorized {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Calendar")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("", selection: $settingsManager.selectedCalendarIdentifier) {
+                            Text("Default Calendar").tag(nil as String?)
+                            ForEach(calendarManager.availableCalendars, id: \.calendarIdentifier) { calendar in
+                                HStack {
+                                    Circle()
+                                        .fill(Color(cgColor: calendar.cgColor ?? CGColor.black))
+                                        .frame(width: 8, height: 8)
+                                    Text(calendar.title)
+                                }
+                                .tag(calendar.calendarIdentifier as String?)
+                            }
+                        }
+                        .labelsHidden()
+                    }
+                } else if calendarManager.authorizationStatus == .denied {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Calendar access denied", systemImage: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                        
+                        Text("Please enable calendar access in System Settings → Privacy & Security → Calendars")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Button("Open System Settings") {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                } else {
+                    Button("Grant Calendar Access") {
+                        Task {
+                            await calendarManager.requestAccess()
+                        }
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            Text("Events are created with the task description as the title. The event spans from timer start to timer end.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(20)
+        .onAppear {
+            calendarManager.updateAuthorizationStatus()
         }
     }
 }

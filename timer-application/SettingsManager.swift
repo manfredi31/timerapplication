@@ -83,6 +83,15 @@ class SettingsManager: ObservableObject {
         didSet { saveHotkey(stopTimerHotkey, forKey: "stopTimerHotkey") }
     }
     
+    // Calendar integration settings
+    @Published var calendarIntegrationEnabled: Bool {
+        didSet { UserDefaults.standard.set(calendarIntegrationEnabled, forKey: "calendarIntegrationEnabled") }
+    }
+    
+    @Published var selectedCalendarIdentifier: String? {
+        didSet { UserDefaults.standard.set(selectedCalendarIdentifier, forKey: "selectedCalendarIdentifier") }
+    }
+    
     let availableSounds: [String] = ["Chime", "Bell", "Ping", "Alert", "Complete"]
     
     private init() {
@@ -100,6 +109,10 @@ class SettingsManager: ObservableObject {
         
         // Load sound
         self.selectedAlarmSound = UserDefaults.standard.string(forKey: "selectedAlarmSound") ?? "Chime"
+        
+        // Load calendar settings (must be initialized before calling methods)
+        self.calendarIntegrationEnabled = UserDefaults.standard.bool(forKey: "calendarIntegrationEnabled")
+        self.selectedCalendarIdentifier = UserDefaults.standard.string(forKey: "selectedCalendarIdentifier")
         
         // Load hotkeys
         self.startTimerHotkey = loadHotkey(forKey: "startTimerHotkey")
